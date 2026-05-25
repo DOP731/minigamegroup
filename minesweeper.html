@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>지뢰찾기</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --panel: #16213e;
+      --accent: #0f3460;
+      --highlight: #e94560;
+      --cell-unrevealed: #2a4a7f;
+      --cell-revealed: #0d1b3e;
+      --cell-hover: #3a5a8f;
+      --text: #e0e0e0;
+      --number-colors: #64b5f6, #81c784, #e57373, #7986cb, #ff8a65, #4dd0e1, #f06292, #90a4ae;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 12px 40px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      color: #e94560;
+      text-shadow: 0 0 18px rgba(233,69,96,0.6);
+    }
+
+    /* ── 난이도 선택 ── */
+    .difficulty {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty button {
+      padding: 8px 20px;
+      border: 2px solid var(--accent);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .difficulty button:hover,
+    .difficulty button.active {
+      background: var(--highlight);
+      border-color: var(--highlight);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(233,69,96,0.5);
+    }
+
+    /* ── 상태 바 ── */
+    .statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 700px;
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 12px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      min-width: 80px;
+    }
+
+    .stat .icon { font-size: 1.4rem; }
+
+    #reset-btn {
+      font-size: 1.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.3));
+    }
+
+    #reset-btn:hover { transform: rotate(20deg) scale(1.2); }
+
+    /* ── 게임 보드 ── */
+    #board-wrapper {
+      overflow: auto;
+      max-width: 100vw;
+      padding: 4px;
+    }
+
+    #board {
+      display: inline-grid;
+      gap: 3px;
+      padding: 12px;
+      background: var(--panel);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .cell {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--cell-unrevealed);
+      border: 1px solid rgba(255,255,255,0.07);
+      transition: background 0.1s, transform 0.1s;
+      position: relative;
+    }
+
+    .cell:hover:not(.revealed):not(.exploded) {
+      background: var(--cell-hover);
+      transform: scale(1.08);
+      z-index: 2;
+    }
+
+    .cell.revealed {
+      background: var(--cell-revealed);
+      cursor: default;
+      border-color: rgba(255,255,255,0.04);
+    }
+
+    .cell.flagged { background: #1e3a5f; }
+    .cell.flagged::after { content: '🚩'; font-size: 1rem; }
+
+    .cell.question { background: #1e3a5f; }
+    .cell.question::after { content: '❓'; font-size: 1rem; }
+
+    .cell.mine.revealed { background: #3d0000; }
+    .cell.mine-wrong { background: #5c0000; }
+
+    .cell.exploded {
+      background: #ff2244 !important;
+      animation: boom 0.3s ease-out;
+    }
+
+    @keyframes boom {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.5); }
+      100% { transform: scale(1); }
+    }
+
+    /* 숫자 색 */
+    .n1 { color: #64b5f6; }
+    .n2 { color: #81c784; }
+    .n3 { color: #e57373; }
+    .n4 { color: #ce93d8; }
+    .n5 { color: #ff8a65; }
+    .n6 { color: #4dd0e1; }
+    .n7 { color: #f06292; }
+    .n8 { color: #90a4ae; }
+
+    /* ── 오버레이 ── */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: fadeIn 0.3s ease;
+    }
+
+    #overlay.show { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .overlay-box {
+      background: var(--panel);
+      border: 2px solid var(--highlight);
+      border-radius: 16px;
+      padding: 36px 48px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(233,69,96,0.4);
+      animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .overlay-emoji { font-size: 3.5rem; margin-bottom: 12px; }
+    .overlay-title { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .overlay-sub   { font-size: 1rem; color: #aaa; margin-bottom: 24px; }
+
+    .overlay-box button {
+      padding: 10px 28px;
+      background: var(--highlight);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .overlay-box button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(233,69,96,0.6);
+    }
+
+    /* ── 모바일 우클릭 대체 버튼 ── */
+    #flag-toggle {
+      margin-top: 18px;
+      padding: 10px 26px;
+      border: 2px solid var(--accent);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    #flag-toggle.flag-mode {
+      background: var(--highlight);
+      border-color: var(--highlight);
+      box-shadow: 0 4px 14px rgba(233,69,96,0.5);
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 0.78rem;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<a href="index.html" style="
+  position:fixed;top:14px;left:16px;z-index:999;
+  display:flex;align-items:center;gap:6px;
+  color:#8899aa;text-decoration:none;font-size:0.85rem;font-weight:600;
+  background:rgba(22,33,62,0.9);border:1px solid rgba(79,163,224,0.2);
+  padding:6px 14px;border-radius:8px;backdrop-filter:blur(8px);
+  transition:color 0.2s,border-color 0.2s;
+" onmouseover="this.style.color='#4fa3e0';this.style.borderColor='rgba(79,163,224,0.5)'"
+   onmouseout="this.style.color='#8899aa';this.style.borderColor='rgba(79,163,224,0.2)'">← 홈으로</a>
+
+<h1>💣 지뢰찾기</h1>
+
+<!-- 난이도 -->
+<div class="difficulty">
+  <button data-level="easy"   class="active">초급 (9×9, 10💣)</button>
+  <button data-level="medium"          >중급 (16×16, 40💣)</button>
+  <button data-level="hard"            >고급 (30×16, 99💣)</button>
+</div>
+
+<!-- 상태 바 -->
+<div class="statusbar">
+  <div class="stat"><span class="icon">💣</span><span id="mine-count">10</span></div>
+  <button id="reset-btn" title="새 게임">😊</button>
+  <div class="stat" style="justify-content:flex-end"><span class="icon">⏱</span><span id="timer">0</span></div>
+</div>
+
+<!-- 보드 -->
+<div id="board-wrapper"><div id="board"></div></div>
+
+<!-- 모바일 깃발 토글 -->
+<button id="flag-toggle">🚩 깃발 모드 OFF</button>
+<p class="hint">우클릭(PC) 또는 깃발 모드(모바일)로 깃발/물음표를 표시하세요</p>
+
+<!-- 결과 오버레이 -->
+<div id="overlay">
+  <div class="overlay-box">
+    <div class="overlay-emoji" id="ov-emoji"></div>
+    <div class="overlay-title" id="ov-title"></div>
+    <div class="overlay-sub"   id="ov-sub"></div>
+    <button onclick="newGame()">다시 시작</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  설정
+// ══════════════════════════════════════════════
+const LEVELS = {
+  easy:   { rows:  9, cols:  9, mines: 10 },
+  medium: { rows: 16, cols: 16, mines: 40 },
+  hard:   { rows: 16, cols: 30, mines: 99 },
+};
+
+let level    = 'easy';
+let config   = { ...LEVELS[level] };
+let board    = [];       // 2D array of cell objects
+let revealed = 0;
+let flagCount = 0;
+let gameOver  = false;
+let firstClick = true;
+let timerInterval = null;
+let elapsed  = 0;
+let flagMode  = false;   // 모바일 전용
+
+// ══════════════════════════════════════════════
+//  초기화
+// ══════════════════════════════════════════════
+function newGame() {
+  clearInterval(timerInterval);
+  elapsed    = 0;
+  revealed   = 0;
+  flagCount  = 0;
+  gameOver   = false;
+  firstClick = true;
+
+  document.getElementById('timer').textContent = '0';
+  document.getElementById('mine-count').textContent = config.mines;
+  document.getElementById('reset-btn').textContent = '😊';
+  document.getElementById('overlay').classList.remove('show');
+
+  buildBoard();
+  renderBoard();
+}
+
+function buildBoard() {
+  board = [];
+  for (let r = 0; r < config.rows; r++) {
+    board.push([]);
+    for (let c = 0; c < config.cols; c++) {
+      board[r].push({ mine: false, revealed: false, flagged: false, question: false, adj: 0 });
+    }
+  }
+}
+
+function placeMines(safeR, safeC) {
+  // 첫 클릭 주변 3×3은 지뢰 없음
+  const safe = new Set();
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      const nr = safeR + dr, nc = safeC + dc;
+      if (inBounds(nr, nc)) safe.add(nr * config.cols + nc);
+    }
+
+  let placed = 0;
+  while (placed < config.mines) {
+    const r = Math.floor(Math.random() * config.rows);
+    const c = Math.floor(Math.random() * config.cols);
+    const k = r * config.cols + c;
+    if (!board[r][c].mine && !safe.has(k)) {
+      board[r][c].mine = true;
+      placed++;
+    }
+  }
+
+  // 인접 숫자 계산
+  for (let r = 0; r < config.rows; r++)
+    for (let c = 0; c < config.cols; c++)
+      if (!board[r][c].mine)
+        board[r][c].adj = neighbors(r, c).filter(([nr, nc]) => board[nr][nc].mine).length;
+}
+
+// ══════════════════════════════════════════════
+//  렌더링
+// ══════════════════════════════════════════════
+function renderBoard() {
+  const el = document.getElementById('board');
+  el.style.gridTemplateColumns = `repeat(${config.cols}, 36px)`;
+  el.innerHTML = '';
+
+  for (let r = 0; r < config.rows; r++) {
+    for (let c = 0; c < config.cols; c++) {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.dataset.r = r;
+      div.dataset.c = c;
+
+      div.addEventListener('click',       onLeftClick);
+      div.addEventListener('contextmenu', onRightClick);
+      div.addEventListener('touchstart',  onTouchStart, { passive: true });
+      div.addEventListener('touchend',    onTouchEnd,   { passive: true });
+
+      el.appendChild(div);
+    }
+  }
+}
+
+function updateCell(r, c) {
+  const cell = board[r][c];
+  const div  = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  if (!div) return;
+
+  div.className = 'cell';
+  div.textContent = '';
+
+  if (cell.revealed) {
+    div.classList.add('revealed');
+    if (cell.mine) {
+      div.classList.add('mine');
+      div.textContent = '💣';
+    } else if (cell.adj > 0) {
+      div.textContent = cell.adj;
+      div.classList.add(`n${cell.adj}`);
+    }
+  } else if (cell.flagged) {
+    div.classList.add('flagged');
+  } else if (cell.question) {
+    div.classList.add('question');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  클릭 핸들러
+// ══════════════════════════════════════════════
+let touchTimer = null;
+
+function onTouchStart(e) {
+  const div = e.currentTarget;
+  touchTimer = setTimeout(() => {
+    touchTimer = null;
+    handleFlag(+div.dataset.r, +div.dataset.c);
+  }, 450);
+}
+
+function onTouchEnd(e) {
+  if (touchTimer !== null) {
+    clearTimeout(touchTimer);
+    touchTimer = null;
+    // 짧은 탭 → 좌클릭
+    const div = e.currentTarget;
+    if (flagMode) handleFlag(+div.dataset.r, +div.dataset.c);
+    else          handleReveal(+div.dataset.r, +div.dataset.c);
+  }
+}
+
+function onLeftClick(e) {
+  if (flagMode) { handleFlag(+this.dataset.r, +this.dataset.c); return; }
+  handleReveal(+this.dataset.r, +this.dataset.c);
+}
+
+function onRightClick(e) {
+  e.preventDefault();
+  handleFlag(+this.dataset.r, +this.dataset.c);
+}
+
+// ══════════════════════════════════════════════
+//  게임 로직
+// ══════════════════════════════════════════════
+function handleReveal(r, c) {
+  if (gameOver) return;
+  const cell = board[r][c];
+  if (cell.revealed || cell.flagged) return;
+
+  if (firstClick) {
+    firstClick = false;
+    placeMines(r, c);
+    startTimer();
+  }
+
+  if (cell.mine) {
+    cell.revealed = true;
+    updateCell(r, c);
+    const div = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    div.classList.add('exploded');
+    endGame(false);
+    return;
+  }
+
+  floodReveal(r, c);
+  checkWin();
+}
+
+function handleFlag(r, c) {
+  if (gameOver) return;
+  const cell = board[r][c];
+  if (cell.revealed) return;
+
+  if (!cell.flagged && !cell.question) {
+    cell.flagged = true;
+    flagCount++;
+  } else if (cell.flagged) {
+    cell.flagged  = false;
+    cell.question = true;
+    flagCount--;
+  } else {
+    cell.question = false;
+  }
+
+  document.getElementById('mine-count').textContent = config.mines - flagCount;
+  updateCell(r, c);
+}
+
+function floodReveal(r, c) {
+  const cell = board[r][c];
+  if (cell.revealed || cell.flagged || cell.mine) return;
+  cell.revealed = true;
+  revealed++;
+  updateCell(r, c);
+  if (cell.adj === 0)
+    neighbors(r, c).forEach(([nr, nc]) => floodReveal(nr, nc));
+}
+
+function checkWin() {
+  const total = config.rows * config.cols - config.mines;
+  if (revealed >= total) endGame(true);
+}
+
+function endGame(won) {
+  gameOver = true;
+  clearInterval(timerInterval);
+  document.getElementById('reset-btn').textContent = won ? '😎' : '😵';
+
+  if (!won) {
+    // 모든 지뢰 공개, 잘못된 깃발 표시
+    for (let r = 0; r < config.rows; r++)
+      for (let c = 0; c < config.cols; c++) {
+        const cell = board[r][c];
+        if (cell.mine && !cell.flagged && !cell.revealed) {
+          cell.revealed = true; updateCell(r, c);
+        }
+        if (!cell.mine && cell.flagged) {
+          const div = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+          div.classList.add('mine-wrong');
+          div.textContent = '❌';
+        }
+      }
+  }
+
+  setTimeout(() => {
+    const ov = document.getElementById('overlay');
+    document.getElementById('ov-emoji').textContent = won ? '🎉' : '💥';
+    document.getElementById('ov-title').textContent = won ? '클리어!' : '게임 오버';
+    document.getElementById('ov-sub').textContent   = won
+      ? `${elapsed}초 만에 성공했습니다!`
+      : `아쉽네요. 다시 도전해 보세요!`;
+    ov.classList.add('show');
+  }, won ? 400 : 600);
+}
+
+// ══════════════════════════════════════════════
+//  타이머
+// ══════════════════════════════════════════════
+function startTimer() {
+  timerInterval = setInterval(() => {
+    elapsed++;
+    document.getElementById('timer').textContent = elapsed;
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════
+//  유틸
+// ══════════════════════════════════════════════
+function inBounds(r, c) { return r >= 0 && r < config.rows && c >= 0 && c < config.cols; }
+
+function neighbors(r, c) {
+  const res = [];
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++)
+      if ((dr || dc) && inBounds(r + dr, c + dc))
+        res.push([r + dr, c + dc]);
+  return res;
+}
+
+// ══════════════════════════════════════════════
+//  UI 이벤트
+// ══════════════════════════════════════════════
+document.getElementById('reset-btn').addEventListener('click', newGame);
+
+document.querySelectorAll('.difficulty button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.difficulty button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    level  = btn.dataset.level;
+    config = { ...LEVELS[level] };
+    newGame();
+  });
+});
+
+document.getElementById('flag-toggle').addEventListener('click', () => {
+  flagMode = !flagMode;
+  const btn = document.getElementById('flag-toggle');
+  btn.textContent = flagMode ? '🚩 깃발 모드 ON' : '🚩 깃발 모드 OFF';
+  btn.classList.toggle('flag-mode', flagMode);
+});
+
+// ══════════════════════════════════════════════
+//  시작
+// ══════════════════════════════════════════════
+newGame();
+</script>
+</body>
+</html>

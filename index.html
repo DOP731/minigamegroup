@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎮 Mini Game Hub</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --panel: #16213e;
+      --accent: #0f3460;
+      --highlight: #e94560;
+      --highlight2: #4fa3e0;
+      --green: #56d98a;
+      --text: #e0e0e0;
+      --text-dim: #8899aa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,163,224,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,163,224,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridMove 20s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes gridMove {
+      0%   { background-position: 0 0; }
+      100% { background-position: 40px 40px; }
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 64px;
+      background: rgba(22,33,62,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(79,163,224,0.15);
+    }
+    .nav-logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--highlight);
+      text-shadow: 0 0 16px rgba(233,69,96,0.5);
+    }
+    .nav-logo span { color: var(--highlight2); }
+    .nav-badge {
+      background: rgba(233,69,96,0.15);
+      border: 1px solid rgba(233,69,96,0.3);
+      color: var(--highlight);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 72px 24px 56px;
+    }
+    .hero-label {
+      display: inline-block;
+      background: rgba(79,163,224,0.12);
+      border: 1px solid rgba(79,163,224,0.3);
+      color: var(--highlight2);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      font-weight: 900;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #fff 30%, var(--highlight2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    .section-title {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .section-title h2 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .section-title h2 span { color: var(--highlight); }
+    .section-title p {
+      color: var(--text-dim);
+      margin-top: 8px;
+      font-size: 0.95rem;
+    }
+
+    .games-section {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(79,163,224,0.12);
+      border-radius: 16px;
+      padding: 28px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 60%, rgba(79,163,224,0.05));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(79,163,224,0.4);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(79,163,224,0.15);
+    }
+    .card:hover::before { opacity: 1; }
+
+    .card-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .card-meta { flex: 1; }
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.65;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+    .diff-1 { background: rgba(86,217,138,0.15); color: var(--green); }
+    .diff-2 { background: rgba(79,163,224,0.15); color: var(--highlight2); }
+    .diff-3 { background: rgba(233,69,96,0.15); color: var(--highlight); }
+
+    .play-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .play-btn:hover { transform: scale(1.05); }
+
+    .card-red   .card-icon { background: rgba(233,69,96,0.15); }
+    .card-red   .card-title { color: #e94560; }
+    .card-red   .play-btn { color:#e94560; border-color:rgba(233,69,96,0.4); background:rgba(233,69,96,0.07); }
+    .card-red   .play-btn:hover { background:rgba(233,69,96,0.18); }
+    .card-red:hover { border-color: rgba(233,69,96,0.35) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(233,69,96,0.12) !important; }
+
+    .card-blue  .card-icon { background: rgba(79,163,224,0.15); }
+    .card-blue  .card-title { color: #4fa3e0; }
+    .card-blue  .play-btn { color:#4fa3e0; border-color:rgba(79,163,224,0.4); background:rgba(79,163,224,0.07); }
+    .card-blue  .play-btn:hover { background:rgba(79,163,224,0.18); }
+    .card-blue:hover { border-color: rgba(79,163,224,0.4) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(79,163,224,0.12) !important; }
+
+    .card-yellow .card-icon { background: rgba(251,191,36,0.15); }
+    .card-yellow .card-title { color: #fbbf24; }
+    .card-yellow .play-btn { color:#fbbf24; border-color:rgba(251,191,36,0.4); background:rgba(251,191,36,0.07); }
+    .card-yellow .play-btn:hover { background:rgba(251,191,36,0.18); }
+    .card-yellow:hover { border-color: rgba(251,191,36,0.35) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(251,191,36,0.1) !important; }
+
+    .card-purple .card-icon { background: rgba(167,139,250,0.15); }
+    .card-purple .card-title { color: #a78bfa; }
+    .card-purple .play-btn { color:#a78bfa; border-color:rgba(167,139,250,0.4); background:rgba(167,139,250,0.07); }
+    .card-purple .play-btn:hover { background:rgba(167,139,250,0.18); }
+    .card-purple:hover { border-color: rgba(167,139,250,0.35) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(167,139,250,0.12) !important; }
+
+    .card-green  .card-icon { background: rgba(86,217,138,0.15); }
+    .card-green  .card-title { color: #56d98a; }
+    .card-green  .play-btn { color:#56d98a; border-color:rgba(86,217,138,0.4); background:rgba(86,217,138,0.07); }
+    .card-green  .play-btn:hover { background:rgba(86,217,138,0.18); }
+    .card-green:hover { border-color: rgba(86,217,138,0.35) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(86,217,138,0.1) !important; }
+
+    /* Card preview areas */
+    .card-preview {
+      height: 100px;
+      border-radius: 10px;
+      background: rgba(13,27,62,0.8);
+      border: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Minesweeper mini preview */
+    .prev-mine { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:8px; width:100%; }
+    .prev-mine .mc { aspect-ratio:1; border-radius:3px; background:#2a4a7f; display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:700; }
+    .prev-mine .mc.r { background:#0d1b3e; }
+    .prev-mine .mc.n1{color:#64b5f6} .prev-mine .mc.n2{color:#81c784} .prev-mine .mc.n3{color:#e57373}
+    .prev-mine .mc.boom { background:#3d0000; font-size:0.7rem; }
+
+    /* Snake mini preview */
+    .prev-snake { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; padding:8px; width:100%; }
+    .prev-snake .sc { aspect-ratio:1; border-radius:2px; background:rgba(79,163,224,0.07); }
+    .prev-snake .sc.s { background:#2d7ab5; border-radius:3px; }
+    .prev-snake .sc.h { background:#56d98a; border-radius:4px; }
+    .prev-snake .sc.f { background:#e94560; border-radius:50%; }
+
+    /* 2048 mini preview */
+    .prev-2048 { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:8px; width:100%; }
+    .prev-2048 .tc { aspect-ratio:1; border-radius:4px; background:rgba(15,52,96,0.6); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; color:#fff; }
+    .prev-2048 .t2{background:#eee4da;color:#776e65} .prev-2048 .t4{background:#ede0c8;color:#776e65}
+    .prev-2048 .t8{background:#f2b179} .prev-2048 .t16{background:#f59563}
+    .prev-2048 .t32{background:#f67c5f} .prev-2048 .t64{background:#f65e3b}
+    .prev-2048 .t128{background:#edcf72;font-size:0.45rem} .prev-2048 .t256{background:#edcc61;font-size:0.45rem}
+    .prev-2048 .t2048{background:#edc22e;font-size:0.38rem}
+
+    /* Tetris mini preview */
+    .prev-tetris { display:grid; grid-template-columns:repeat(9,1fr); gap:2px; padding:8px; width:100%; }
+    .prev-tetris .tc { aspect-ratio:1; border-radius:2px; background:rgba(255,255,255,0.04); }
+    .prev-tetris .ti{background:#00f0f0} .prev-tetris .to{background:#f0f000}
+    .prev-tetris .ts{background:#00a800} .prev-tetris .tz{background:#c00000}
+    .prev-tetris .tj{background:#0000c0} .prev-tetris .tl{background:#f0a000}
+    .prev-tetris .tt{background:#9000c0}
+
+    /* Memory mini preview */
+    .prev-memory { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:8px; width:100%; }
+    .prev-memory .mem { aspect-ratio:1; border-radius:6px; background:#0f2040; border:1px solid rgba(167,139,250,0.2); display:flex; align-items:center; justify-content:center; font-size:1rem; }
+    .prev-memory .mem.open { background:rgba(167,139,250,0.12); border-color:rgba(167,139,250,0.5); }
+    .prev-memory .mem.match { background:rgba(86,217,138,0.15); border-color:rgba(86,217,138,0.5); }
+
+    /* Stats */
+    .stats-bar {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto 60px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid rgba(79,163,224,0.1);
+      border-radius: 12px;
+      padding: 20px 24px;
+      text-align: center;
+    }
+    .stat-num { font-size: 2rem; font-weight: 900; color: var(--highlight); }
+    .stat-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid rgba(79,163,224,0.1);
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    footer span { color: var(--highlight); }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 16px; }
+      .hero { padding: 48px 16px 36px; }
+      .games-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🎮 <span>Mini</span>GameHub</div>
+  <div class="nav-badge">5 GAMES</div>
+</nav>
+
+<section class="hero">
+  <div class="hero-label">VANILLA JS · 설치 불필요</div>
+  <h1>즐거운 미니 게임<br>모음 사이트</h1>
+  <p>브라우저에서 바로 즐기는 5가지 고전 게임.<br>설치 없이, 로그인 없이, 지금 바로 플레이!</p>
+</section>
+
+<div class="stats-bar reveal">
+  <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">게임 종류</div></div>
+  <div class="stat-card"><div class="stat-num">0</div><div class="stat-label">외부 라이브러리</div></div>
+  <div class="stat-card"><div class="stat-num">100%</div><div class="stat-label">Vanilla JS</div></div>
+  <div class="stat-card"><div class="stat-num">📱</div><div class="stat-label">모바일 지원</div></div>
+</div>
+
+<section class="games-section">
+  <div class="section-title reveal">
+    <h2>게임 <span>선택</span></h2>
+    <p>카드를 클릭해 바로 플레이하세요</p>
+  </div>
+
+  <div class="games-grid">
+
+    <!-- 지뢰찾기 -->
+    <a href="minesweeper.html" class="card card-red reveal">
+      <div class="card-header">
+        <div class="card-icon">💣</div>
+        <div class="card-meta">
+          <div class="card-title">지뢰찾기</div>
+          <div class="card-subtitle">MINESWEEPER</div>
+        </div>
+      </div>
+      <div class="card-preview">
+        <div class="prev-mine" id="mine-preview"></div>
+      </div>
+      <div class="card-desc">숫자 단서를 이용해 지뢰를 피하고 모든 안전한 칸을 열어라! 첫 클릭은 항상 안전합니다.</div>
+      <div class="card-footer">
+        <span class="badge diff-2">난이도 ⭐⭐</span>
+        <span class="play-btn">플레이 ▶</span>
+      </div>
+    </a>
+
+    <!-- 스네이크 -->
+    <a href="snake.html" class="card card-blue reveal">
+      <div class="card-header">
+        <div class="card-icon">🐍</div>
+        <div class="card-meta">
+          <div class="card-title">스네이크</div>
+          <div class="card-subtitle">SNAKE</div>
+        </div>
+      </div>
+      <div class="card-preview">
+        <div class="prev-snake" id="snake-preview"></div>
+      </div>
+      <div class="card-desc">방향키로 뱀을 조종해 먹이를 먹어라! 점수가 오를수록 속도가 빨라진다.</div>
+      <div class="card-footer">
+        <span class="badge diff-2">난이도 ⭐⭐</span>
+        <span class="play-btn">플레이 ▶</span>
+      </div>
+    </a>
+
+    <!-- 2048 -->
+    <a href="2048.html" class="card card-yellow reveal">
+      <div class="card-header">
+        <div class="card-icon">🔢</div>
+        <div class="card-meta">
+          <div class="card-title">2048</div>
+          <div class="card-subtitle">NUMBER MERGE</div>
+        </div>
+      </div>
+      <div class="card-preview">
+        <div class="prev-2048">
+          <div class="tc t2">2</div><div class="tc t4">4</div><div class="tc t8">8</div><div class="tc t16">16</div>
+          <div class="tc t32">32</div><div class="tc t64">64</div><div class="tc t128">128</div><div class="tc t256">256</div>
+          <div class="tc"></div><div class="tc t2">2</div><div class="tc t4">4</div><div class="tc t2048">2048</div>
+          <div class="tc"></div><div class="tc"></div><div class="tc t2">2</div><div class="tc t8">8</div>
+        </div>
+      </div>
+      <div class="card-desc">화살표로 타일을 밀어 같은 숫자를 합쳐라! 2048을 만들면 승리!</div>
+      <div class="card-footer">
+        <span class="badge diff-3">난이도 ⭐⭐⭐</span>
+        <span class="play-btn">플레이 ▶</span>
+      </div>
+    </a>
+
+    <!-- 테트리스 -->
+    <a href="tetris.html" class="card card-purple reveal">
+      <div class="card-header">
+        <div class="card-icon">🧱</div>
+        <div class="card-meta">
+          <div class="card-title">테트리스</div>
+          <div class="card-subtitle">TETRIS</div>
+        </div>
+      </div>
+      <div class="card-preview">
+        <div class="prev-tetris" id="tetris-preview"></div>
+      </div>
+      <div class="card-desc">내려오는 블록을 회전·이동해 가로줄을 완성해라! 레벨이 오를수록 속도가 빨라진다.</div>
+      <div class="card-footer">
+        <span class="badge diff-3">난이도 ⭐⭐⭐</span>
+        <span class="play-btn">플레이 ▶</span>
+      </div>
+    </a>
+
+    <!-- 기억력 카드 -->
+    <a href="memory.html" class="card card-green reveal">
+      <div class="card-header">
+        <div class="card-icon">🃏</div>
+        <div class="card-meta">
+          <div class="card-title">기억력 카드</div>
+          <div class="card-subtitle">MEMORY MATCH</div>
+        </div>
+      </div>
+      <div class="card-preview">
+        <div class="prev-memory">
+          <div class="mem match">🐱</div><div class="mem">?</div><div class="mem open">🦊</div><div class="mem">?</div>
+          <div class="mem">?</div><div class="mem match">🐱</div><div class="mem">?</div><div class="mem open">🦊</div>
+          <div class="mem">?</div><div class="mem">?</div><div class="mem">?</div><div class="mem">?</div>
+        </div>
+      </div>
+      <div class="card-desc">뒤집힌 카드를 기억해 같은 그림 쌍을 모두 맞춰라! 더 적은 시도로 완성할수록 고득점!</div>
+      <div class="card-footer">
+        <span class="badge diff-1">난이도 ⭐</span>
+        <span class="play-btn">플레이 ▶</span>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<footer>
+  <p>🎮 MiniGameHub &nbsp;·&nbsp; Powered by <span>Vanilla JS</span> &nbsp;·&nbsp; No frameworks, no installs</p>
+</footer>
+
+<script>
+  // Minesweeper preview
+  (function(){
+    const el = document.getElementById('mine-preview');
+    const data = [
+      [0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],
+      [0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],
+      [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],
+      [0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],
+      [0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4],
+    ];
+    const special = {
+      '1,0': ['r','n2','2'], '3,0': ['r','n1','1'],
+      '1,1': ['boom','💣'], '4,1': ['r','n3','3'],
+      '2,2': ['r','n1','1'], '5,2': ['r','n2','2'],
+      '0,3': ['r','n1','1'], '3,3': ['r','n2','2'],
+      '6,4': ['r','n1','1']
+    };
+    for(let row=0; row<5; row++){
+      for(let col=0; col<7; col++){
+        const d = document.createElement('div');
+        const key = col+','+row;
+        const sp = special[key];
+        if(sp){ d.className='mc '+sp[0]; d.textContent=sp[1]==='💣'?'💣':sp[2]||''; }
+        else { d.className='mc'; }
+        el.appendChild(d);
+      }
+    }
+  })();
+
+  // Snake preview
+  (function(){
+    const el = document.getElementById('snake-preview');
+    const COLS=10, ROWS=5;
+    const snake=[{x:5,y:2},{x:4,y:2},{x:3,y:2},{x:2,y:2}];
+    const food={x:8,y:1};
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const d=document.createElement('div');
+        const isHead=snake[0].x===c&&snake[0].y===r;
+        const isBody=!isHead&&snake.some(s=>s.x===c&&s.y===r);
+        const isFood=food.x===c&&food.y===r;
+        d.className='sc'+(isHead?' h':isBody?' s':isFood?' f':'');
+        el.appendChild(d);
+      }
+    }
+  })();
+
+  // Tetris preview
+  (function(){
+    const el=document.getElementById('tetris-preview');
+    const COLS=9, ROWS=5;
+    const grid=[
+      [0,0,0,0,0,0,0,0,0],
+      [0,0,'tl',0,0,0,0,0,0],
+      [0,'tt','tt','tt',0,'tl','tl',0,0],
+      ['ts','ts',0,'tj','tj','tj','tl',0,0],
+      ['ti','ti','ti','ti','ts','tz','tz',0,0],
+    ];
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const d=document.createElement('div');
+        d.className='tc'+(grid[r][c]?' '+grid[r][c]:'');
+        el.appendChild(d);
+      }
+    }
+  })();
+
+  // Scroll reveal
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+  },{threshold:0.08});
+  document.querySelectorAll('.reveal').forEach((el,i)=>{
+    el.style.transitionDelay=(i*0.07)+'s';
+    obs.observe(el);
+  });
+</script>
+</body>
+</html>

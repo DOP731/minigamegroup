@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐍 스네이크</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --panel: #16213e;
+      --accent: #0f3460;
+      --highlight: #4fa3e0;
+      --green: #56d98a;
+      --red: #e94560;
+      --text: #e0e0e0;
+      --text-dim: #8899aa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+    }
+
+    /* Top bar */
+    .topbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 56px;
+      background: rgba(22,33,62,0.95);
+      border-bottom: 1px solid rgba(79,163,224,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .home-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .home-btn:hover { color: var(--highlight); }
+    .topbar-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--highlight);
+      letter-spacing: 2px;
+    }
+    .topbar-score {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+    .topbar-score span { color: var(--green); font-weight: 700; }
+
+    /* Main layout */
+    .main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+      gap: 20px;
+      width: 100%;
+    }
+
+    /* Controls row */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .ctrl-btn {
+      background: rgba(79,163,224,0.1);
+      border: 1px solid rgba(79,163,224,0.3);
+      color: var(--highlight);
+      padding: 7px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(79,163,224,0.2); }
+    .ctrl-btn.active { background: rgba(79,163,224,0.25); }
+
+    /* Canvas wrapper */
+    .canvas-wrap {
+      position: relative;
+      border: 2px solid rgba(79,163,224,0.25);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(79,163,224,0.08);
+    }
+    canvas { display: block; }
+
+    /* Overlay */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10,15,40,0.88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+    .overlay-icon { font-size: 3rem; }
+    .overlay-title { font-size: 1.6rem; font-weight: 900; color: var(--highlight); }
+    .overlay-sub { font-size: 0.95rem; color: var(--text-dim); }
+    .overlay-score { font-size: 1.1rem; color: var(--green); font-weight: 700; }
+    .restart-btn {
+      background: var(--highlight);
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .restart-btn:hover { opacity: 0.85; transform: scale(1.04); }
+
+    /* Mobile d-pad */
+    .dpad {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dpad-row { display: flex; gap: 4px; }
+    .dpad-btn {
+      width: 56px;
+      height: 56px;
+      background: rgba(79,163,224,0.12);
+      border: 1px solid rgba(79,163,224,0.25);
+      border-radius: 10px;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dpad-btn:active { background: rgba(79,163,224,0.3); }
+
+    /* Info */
+    .info-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .info-item {
+      background: var(--panel);
+      border: 1px solid rgba(79,163,224,0.1);
+      border-radius: 10px;
+      padding: 12px 20px;
+      text-align: center;
+      min-width: 100px;
+    }
+    .info-num { font-size: 1.4rem; font-weight: 900; color: var(--highlight); }
+    .info-label { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+    .hint { font-size: 0.82rem; color: var(--text-dim); text-align: center; }
+
+    @media (max-width: 600px) {
+      .dpad { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="home-btn">← 홈으로</a>
+  <div class="topbar-title">🐍 SNAKE</div>
+  <div class="topbar-score">최고: <span id="best-display">0</span></div>
+</div>
+
+<div class="main">
+  <div class="info-row">
+    <div class="info-item">
+      <div class="info-num" id="score-display">0</div>
+      <div class="info-label">점수</div>
+    </div>
+    <div class="info-item">
+      <div class="info-num" id="level-display">1</div>
+      <div class="info-label">레벨</div>
+    </div>
+    <div class="info-item">
+      <div class="info-num" id="len-display">3</div>
+      <div class="info-label">길이</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" onclick="newGame()">🔄 새 게임</button>
+    <button class="ctrl-btn" id="pause-btn" onclick="togglePause()">⏸ 일시정지</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div class="overlay show" id="overlay">
+      <div class="overlay-icon">🐍</div>
+      <div class="overlay-title">스네이크</div>
+      <div class="overlay-sub">화살표 키 또는 WASD로 조종</div>
+      <button class="restart-btn" onclick="newGame()">▶ 시작</button>
+    </div>
+  </div>
+
+  <div class="dpad">
+    <div class="dpad-row"><button class="dpad-btn" data-dir="UP">↑</button></div>
+    <div class="dpad-row">
+      <button class="dpad-btn" data-dir="LEFT">←</button>
+      <button class="dpad-btn" data-dir="DOWN">↓</button>
+      <button class="dpad-btn" data-dir="RIGHT">→</button>
+    </div>
+  </div>
+
+  <div class="hint">🖥 방향키 / WASD &nbsp;|&nbsp; 📱 스와이프 또는 버튼</div>
+</div>
+
+<script>
+const COLS = 20, ROWS = 20, CELL = 20;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = COLS * CELL;
+canvas.height = ROWS * CELL;
+
+const scoreEl = document.getElementById('score-display');
+const bestEl  = document.getElementById('best-display');
+const levelEl = document.getElementById('level-display');
+const lenEl   = document.getElementById('len-display');
+const overlay = document.getElementById('overlay');
+const pauseBtn = document.getElementById('pause-btn');
+
+let snake, dir, nextDir, food, score, best, level, loop, paused, running;
+
+best = +localStorage.getItem('snake_best') || 0;
+bestEl.textContent = best;
+
+const COLORS = {
+  bg:   '#0d1b3e',
+  grid: 'rgba(79,163,224,0.05)',
+  head: '#56d98a',
+  body: '#2d7ab5',
+  food: '#e94560',
+  foodGlow: 'rgba(233,69,96,0.4)',
+  dead: '#e94560',
+};
+
+function rnd(n) { return Math.floor(Math.random() * n); }
+
+function spawnFood() {
+  let pos;
+  const occupied = new Set(snake.map(s => s.x + ',' + s.y));
+  do { pos = { x: rnd(COLS), y: rnd(ROWS) }; }
+  while (occupied.has(pos.x + ',' + pos.y));
+  food = pos;
+}
+
+function newGame() {
+  const mid = Math.floor(COLS / 2);
+  snake = [
+    { x: mid, y: 10 },
+    { x: mid - 1, y: 10 },
+    { x: mid - 2, y: 10 },
+  ];
+  dir = { x: 1, y: 0 };
+  nextDir = { x: 1, y: 0 };
+  score = 0;
+  level = 1;
+  paused = false;
+  running = true;
+  scoreEl.textContent = 0;
+  levelEl.textContent = 1;
+  lenEl.textContent = 3;
+  pauseBtn.textContent = '⏸ 일시정지';
+  spawnFood();
+  hideOverlay();
+  clearInterval(loop);
+  startLoop();
+}
+
+function getSpeed() {
+  return Math.max(80, 220 - (level - 1) * 20);
+}
+
+function startLoop() {
+  loop = setInterval(tick, getSpeed());
+}
+
+function togglePause() {
+  if (!running) return;
+  paused = !paused;
+  pauseBtn.textContent = paused ? '▶ 재개' : '⏸ 일시정지';
+}
+
+function tick() {
+  if (paused) return;
+  dir = nextDir;
+
+  const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+  // Wall collision
+  if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+    gameOver(); return;
+  }
+  // Self collision
+  if (snake.some(s => s.x === head.x && s.y === head.y)) {
+    gameOver(); return;
+  }
+
+  snake.unshift(head);
+
+  if (head.x === food.x && head.y === food.y) {
+    score += 10 * level;
+    scoreEl.textContent = score;
+    lenEl.textContent = snake.length;
+    level = Math.floor(snake.length / 5) + 1;
+    levelEl.textContent = level;
+    clearInterval(loop);
+    startLoop();
+    spawnFood();
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      localStorage.setItem('snake_best', best);
+    }
+  } else {
+    snake.pop();
+  }
+
+  draw();
+}
+
+function draw() {
+  // Background
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid
+  ctx.strokeStyle = COLORS.grid;
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath();
+    ctx.moveTo(c * CELL, 0);
+    ctx.lineTo(c * CELL, canvas.height);
+    ctx.stroke();
+  }
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath();
+    ctx.moveTo(0, r * CELL);
+    ctx.lineTo(canvas.width, r * CELL);
+    ctx.stroke();
+  }
+
+  // Food glow
+  ctx.save();
+  ctx.shadowColor = COLORS.foodGlow;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = COLORS.food;
+  const fr = CELL * 0.42;
+  ctx.beginPath();
+  ctx.arc(food.x * CELL + CELL/2, food.y * CELL + CELL/2, fr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Snake body
+  snake.forEach((seg, i) => {
+    const isHead = i === 0;
+    const r = isHead ? 5 : 3;
+    ctx.fillStyle = isHead ? COLORS.head : COLORS.body;
+    if (isHead) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(86,217,138,0.4)';
+      ctx.shadowBlur = 8;
+    }
+    ctx.beginPath();
+    ctx.roundRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2, r);
+    ctx.fill();
+    if (isHead) ctx.restore();
+  });
+
+  // Eyes on head
+  const hx = snake[0].x * CELL;
+  const hy = snake[0].y * CELL;
+  ctx.fillStyle = '#fff';
+  const eyeR = 2.5;
+  const offX = dir.x !== 0 ? dir.x * 3 : 0;
+  const offY = dir.y !== 0 ? dir.y * 3 : 0;
+  const eye1 = { x: hx + CELL/2 - (dir.y !== 0 ? 3 : 0) + offX, y: hy + CELL/2 - (dir.x !== 0 ? 3 : 0) + offY };
+  const eye2 = { x: hx + CELL/2 + (dir.y !== 0 ? 3 : 0) + offX, y: hy + CELL/2 + (dir.x !== 0 ? 3 : 0) + offY };
+  ctx.beginPath(); ctx.arc(eye1.x, eye1.y, eyeR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(eye2.x, eye2.y, eyeR, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(eye1.x+0.5, eye1.y+0.5, 1.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(eye2.x+0.5, eye2.y+0.5, 1.2, 0, Math.PI*2); ctx.fill();
+}
+
+function gameOver() {
+  clearInterval(loop);
+  running = false;
+
+  // Flash red
+  ctx.fillStyle = 'rgba(233,69,96,0.18)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  showOverlay('😵', '게임 오버!', '점수: ' + score, true);
+}
+
+function showOverlay(icon, title, sub, showRestart) {
+  overlay.innerHTML = `
+    <div class="overlay-icon">${icon}</div>
+    <div class="overlay-title">${title}</div>
+    <div class="overlay-score">${sub}</div>
+    ${showRestart ? '<button class="restart-btn" onclick="newGame()">🔄 다시 플레이</button>' : ''}
+  `;
+  overlay.classList.add('show');
+}
+function hideOverlay() { overlay.classList.remove('show'); }
+
+// Keyboard
+const KEY_MAP = {
+  ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
+  w: 'UP', s: 'DOWN', a: 'LEFT', d: 'RIGHT',
+  W: 'UP', S: 'DOWN', A: 'LEFT', D: 'RIGHT',
+};
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); togglePause(); return; }
+  const d = KEY_MAP[e.key];
+  if (!d) return;
+  e.preventDefault();
+  setDir(d);
+});
+function setDir(d) {
+  if (d === 'UP'    && dir.y !== 1)  nextDir = { x: 0, y: -1 };
+  if (d === 'DOWN'  && dir.y !== -1) nextDir = { x: 0, y: 1 };
+  if (d === 'LEFT'  && dir.x !== 1)  nextDir = { x: -1, y: 0 };
+  if (d === 'RIGHT' && dir.x !== -1) nextDir = { x: 1, y: 0 };
+}
+
+// D-pad buttons
+document.querySelectorAll('.dpad-btn').forEach(btn => {
+  btn.addEventListener('click', () => setDir(btn.dataset.dir));
+});
+
+// Touch swipe
+let touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+canvas.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    setDir(dx > 0 ? 'RIGHT' : 'LEFT');
+  } else {
+    setDir(dy > 0 ? 'DOWN' : 'UP');
+  }
+}, { passive: true });
+
+// Initial draw
+ctx.fillStyle = COLORS.bg;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+</script>
+</body>
+</html>
